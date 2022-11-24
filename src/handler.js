@@ -18,7 +18,7 @@ const addBook = (request, h) => {
   } = request.payload;
 
   const id = nanoid(16);
-  const finished = pageCount === readPage;
+  const finished = pageCount > 0 && pageCount === readPage;
   const insertedAt = new Date().toISOString();
   const updatedAt = new Date().toISOString();
 
@@ -143,7 +143,7 @@ const editBook = (request, h) => {
   } = request.payload;
 
   const updatedAt = new Date().toISOString();
-  const finished = pageCount === readPage;
+  const finished = pageCount > 0 && pageCount === readPage;
 
   const index = books.findIndex((book) => book.id === bookId);
 
