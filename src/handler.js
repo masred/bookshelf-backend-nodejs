@@ -1,3 +1,7 @@
+/* eslint-disable no-shadow */
+/* eslint-disable function-paren-newline */
+/* eslint-disable no-confusing-arrow */
+/* eslint-disable implicit-arrow-linebreak */
 const { nanoid } = require('nanoid');
 const books = require('./books');
 
@@ -14,7 +18,7 @@ const addBook = (request, h) => {
   } = request.payload;
 
   const id = nanoid(16);
-  const finished = false;
+  const finished = pageCount === readPage;
   const insertedAt = new Date().toISOString();
   const updatedAt = new Date().toISOString();
 
@@ -32,8 +36,6 @@ const addBook = (request, h) => {
     insertedAt,
     updatedAt,
   };
-
-  books.push(newBook);
 
   if (name == null) {
     const response = h.response({
@@ -56,6 +58,7 @@ const addBook = (request, h) => {
     return response;
   }
 
+  books.push(newBook);
   const isSuccess = books.filter((book) => book.id === id).length > 0;
 
   if (isSuccess) {
@@ -80,15 +83,28 @@ const addBook = (request, h) => {
   return response;
 };
 
-const getAllBooks = () => ({
-  status: 'success',
-  data: {
-    books: books.map((show) => {
-      const { id, name, publisher } = show;
-      return { id, name, publisher };
-    }),
-  },
-});
+const getAllBooks = (request, h) => {
+  const { name, reading, finished } = request.query;
+  const nameQ = name?.toLowerCase();
+
+  const response = h.response({
+    status: 'success',
+    data: {
+      books: books
+        .filter((book) =>
+          name ? book.name.toLowerCase().includes(nameQ) : true,
+        )
+        .filter((book) => (reading ? book.reading === Boolean(+reading) : true))
+        .filter((book) =>
+          finished ? book.finished === Boolean(+finished) : true,
+        )
+        .map(({ id, name, publisher }) => ({ id, name, publisher })),
+    },
+  });
+
+  response.code(200);
+  return response;
+};
 
 const getBookById = (request, h) => {
   const { bookId } = request.params;
@@ -112,4 +128,109 @@ const getBookById = (request, h) => {
   return response;
 };
 
-module.exports = { addBook, getAllBooks, getBookById };
+const editBook = (request, h) => {
+  const { bookId } = request.params;
+
+  const {
+    name,
+    year,
+    author,
+    summary,
+    publisher,
+    pageCount,
+    readPage,
+    reading,
+  } = request.payload;
+
+  const updatedAt = new Date().toISOString();
+  const finished = pageCount === readPage;
+
+  const index = books.findIndex((book) => book.id === bookId);
+
+  if (name == null) {
+    const response = h.response({
+      status: 'fail',
+      message: 'Gagal memperbarui buku. Mohon isi nama buku',
+    });
+
+    response.code(400);
+    return response;
+  }
+
+  if (readPage > pageCount) {
+    const response = h.response({
+      status: 'fail',
+      message:
+        'Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount',
+    });
+
+    response.code(400);
+    return response;
+  }
+
+  if (index !== -1) {
+    books[index] = {
+      ...books[index],
+      name,
+      year,
+      author,
+      summary,
+      publisher,
+      pageCount,
+      readPage,
+      finished,
+      reading,
+      updatedAt,
+    };
+
+    const response = h.response({
+      status: 'success',
+      message: 'Buku berhasil diperbarui',
+    });
+
+    response.code(200);
+    return response;
+  }
+
+  const response = h.response({
+    status: 'fail',
+    message: 'Gagal memperbarui buku. Id tidak ditemukan',
+  });
+
+  response.code(404);
+  return response;
+};
+
+const deleteBook = (request, h) => {
+  const { bookId } = request.params;
+
+  const index = books.findIndex((book) => book.id === bookId);
+
+  if (index !== -1) {
+    books.splice(index, 1);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Buku berhasil dihapus',
+    });
+
+    response.code(200);
+    return response;
+  }
+
+  const response = h.response({
+    status: 'fail',
+    message: 'Buku gagal dihapus. Id tidak ditemukan',
+  });
+
+  response.code(404);
+  return response;
+};
+
+module.exports = {
+  addBook,
+  getAllBooks,
+  getBookById,
+  editBook,
+  deleteBook,
+};
